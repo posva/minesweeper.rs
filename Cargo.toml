@@ -1,0 +1,13 @@
+[package]
+name = "minesweeper"
+version = "0.1.0"
+authors = ["Eduardo San Martin Morote <posva13@gmail.com>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+rand = "0.7.3"
+tui = "0.13.0"
+termion = "1.5.5"
+argh = "0.1"

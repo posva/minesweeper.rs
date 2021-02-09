@@ -2,87 +2,128 @@ use crate::app;
 use crate::game;
 
 use tui::{
-  backend::Backend,
-  layout::{Alignment, Constraint, Direction, Layout, Rect},
-  style::{Color, Modifier, Style},
-  symbols,
-  text::{Span, Spans},
-  widgets::canvas::{Canvas, Line, Map, MapResolution, Rectangle},
-  widgets::{
-    Axis, BarChart, Block, Borders, Chart, Dataset, Gauge, LineGauge, List, ListItem, Paragraph,
-    Row, Sparkline, Table, Tabs, Wrap,
-  },
-  Frame,
+    backend::Backend,
+    layout::{Alignment, Constraint, Direction, Layout, Rect},
+    style::{Color, Modifier, Style},
+    symbols,
+    text::{Span, Spans},
+    widgets::canvas::{Canvas, Line, Map, MapResolution, Rectangle},
+    widgets::{
+        Axis, BarChart, Block, Borders, Chart, Dataset, Gauge, LineGauge, List, ListItem,
+        Paragraph, Row, Sparkline, Table, Tabs, Wrap,
+    },
+    Frame,
 };
 
 pub fn draw<B: Backend>(f: &mut Frame<B>, app: &mut app::App) {
-  let chunks = Layout::default()
-    .direction(Direction::Vertical)
-    .constraints([Constraint::Length(1), Constraint::Min(0)].as_ref())
-    .split(f.size());
+    let chunks = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints([Constraint::Length(1), Constraint::Min(0)].as_ref())
+        .split(f.size());
 
-  draw_title(f, chunks[0]);
-  draw_screen(f, chunks[1], &app.field);
+    draw_title(f, chunks[0]);
+    draw_screen(f, chunks[1], &app.field);
 
-  let screen = Layout::default()
-    .direction(Direction::Horizontal)
-    .constraints([Constraint::Length(app.field.config.columns as u16 * 2)].as_ref())
-    .split(f.size());
+    let screen = Layout::default()
+        .direction(Direction::Horizontal)
+        .constraints([Constraint::Length(app.field.config.columns as u16 * 2)].as_ref())
+        .split(f.size());
 
-  // f.render_widget(screen, chunks[1]);
+    // f.render_widget(screen, chunks[1]);
 
-  let block = Block::default()
-    .title(format!("({}, {})", app.click.0, app.click.1))
-    .style(Style::default().fg(Color::White).bg(Color::Black))
-    .borders(Borders::ALL);
-  f.render_widget(block, screen[0]);
+    let block = Block::default()
+        .title(format!("({}, {})", app.click.0, app.click.1))
+        .style(Style::default().fg(Color::White).bg(Color::Black))
+        .borders(Borders::ALL);
+    // f.render_widget(block, screen[0]);
 
-  // let chunks = Layout::default()
-  //   .constraints([Constraint::Length(3), Constraint::Min(0)].as_ref())
-  //   .split(f.size());
-  // let titles = app
-  //   .tabs
-  //   .titles
-  //   .iter()
-  //   .map(|t| Spans::from(Span::styled(*t, Style::default().fg(Color::Green))))
-  //   .collect();
+    // let chunks = Layout::default()
+    //   .constraints([Constraint::Length(3), Constraint::Min(0)].as_ref())
+    //   .split(f.size());
+    // let titles = app
+    //   .tabs
+    //   .titles
+    //   .iter()
+    //   .map(|t| Spans::from(Span::styled(*t, Style::default().fg(Color::Green))))
+    //   .collect();
 }
 
 fn draw_title<B>(f: &mut Frame<B>, area: Rect)
 where
-  B: Backend,
+    B: Backend,
 {
-  let text = Span::styled(
-    "Minesweeper",
-    Style::default()
-      // TODO: why only one style?
-      .add_modifier(Modifier::BOLD)
-      .fg(Color::LightMagenta),
-  );
-  // let block = Block::default().borders(Borders::BOTTOM);
+    let text = Span::styled(
+        "Minesweeper",
+        Style::default()
+            // TODO: why only one style?
+            .add_modifier(Modifier::BOLD)
+            .fg(Color::LightMagenta),
+    );
+    // let block = Block::default().borders(Borders::BOTTOM);
 
-  let paragraph = Paragraph::new(text)
-    .style(Style::default().fg(Color::White).bg(Color::Black))
-    .alignment(Alignment::Center);
+    let paragraph = Paragraph::new(text)
+        .style(Style::default().fg(Color::White).bg(Color::Black))
+        .alignment(Alignment::Center);
 
-  f.render_widget(paragraph, area);
+    f.render_widget(paragraph, area);
 }
 
 fn draw_screen<B>(f: &mut Frame<B>, area: Rect, field: &game::Field)
 where
-  B: Backend,
+    B: Backend,
 {
-  // TODO: responsive layout vertical /horizontal
-  let chunks = Layout::default()
-    .direction(Direction::Horizontal)
-    .constraints(
-      [
-        Constraint::Length(field.config.columns as u16 * 2),
-        Constraint::Max(5),
-      ]
-      .as_ref(),
-    )
-    .split(area);
+    let mut someText = Vec::new();
+    someText.push(Spans::from(
+        "This is a paragraph with several lines. You can change style your text the way you want",
+    ));
+    // someText.push(Spans::from("THis is spans"));
+    // let mut someText = vec![
+    // Spans::from(""),
+    // Spans::from(vec![
+    //     Span::from(String::from("For example: ")),
+    //     Span::styled("under", Style::default().fg(Color::Red)),
+    //     Span::raw(" "),
+    //     Span::styled("the", Style::default().fg(Color::Green)),
+    //     Span::raw(" "),
+    //     Span::styled("rainbow", Style::default().fg(Color::Blue)),
+    //     Span::raw("."),
+    // ]),
+    // ];
 
-  // f.render_widget(screen, chunks[1]);
+    let block = Block::default().borders(Borders::ALL)
+    // .title(Span::styled(
+    //     "Footer",
+    //     Style::default()
+    //         .fg(Color::Magenta)
+    //         .add_modifier(Modifier::BOLD),
+    // ))
+    ;
+
+    // TODO: responsive layout vertical /horizontal
+    let chunks = Layout::default()
+        .direction(Direction::Horizontal)
+        .constraints(
+            [
+                // * 2 because double size
+                // + 2 for borders
+                Constraint::Length(field.config.columns as u16 * 2 + 2),
+                Constraint::Min(5),
+            ]
+            .as_ref(),
+        )
+        .split(area);
+
+    let lines = vec![String::from("One"), String::from("Two")];
+    let paragraph = Paragraph::new(
+        field
+            .as_lines(true)
+            .into_iter()
+            .map(Spans::from)
+            .collect::<Vec<_>>(),
+    )
+    .block(block)
+    .wrap(Wrap { trim: true });
+    // let paragraph = Paragraph::new(field.as_lines(false).map(|text| Spans::from(text)).collect()).block(block).wrap(Wrap { trim: true });
+
+    f.render_widget(paragraph, chunks[0]);
 }

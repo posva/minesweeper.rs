@@ -1,192 +1,79 @@
-use std::fmt;
+use argh::FromArgs;
+use std::{error::Error, io, time::Duration};
+use termion::{event::Key, input::MouseTerminal, raw::IntoRawMode, screen::AlternateScreen};
+use tui::{backend::TermionBackend, Terminal};
 
-extern crate rand;
-use rand::thread_rng;
-use rand::Rng;
+mod app;
+mod ui;
+mod util;
+use app::App;
+use util::event::{Config, Event, Events};
+mod game;
 
-use std::collections::HashSet;
-
-// TODO: move configs to own module
-#[derive(Clone)]
-struct GameConfig {
-  rows: usize,
-  columns: usize,
-  mines: usize,
+// TODO: rename in game config
+#[derive(Debug, FromArgs)]
+/// GameConfig
+struct Options {
+  /// time in ms between two ticks.
+  #[argh(option, default = "250", short = 't')]
+  tick_rate: u64,
+  /// whether unicode symbols are used to improve the overall look of the app
+  #[argh(option, default = "true", short = 'u')]
+  enhanced_graphics: bool,
 }
 
-impl fmt::Display for GameConfig {
-  fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-    write!(
-      f,
-      "--- {} x {} - {} 💣  ---",
-      self.columns, self.rows, self.mines
-    )
-  }
-}
+fn main() -> Result<(), Box<dyn Error>> {
+  let game_config = game::CONFIG_INTERMEDIATE;
+  let options: Options = argh::from_env();
 
-impl GameConfig {}
+  let events = Events::with_config(Config {
+    tick_rate: Duration::from_millis(options.tick_rate),
+    ..Config::default()
+  });
 
-const CONFIG_BEGINNER: GameConfig = GameConfig {
-  rows: 9,
-  columns: 9,
-  mines: 10,
-};
+  let stdout = io::stdout().into_raw_mode()?;
+  let stdout = MouseTerminal::from(stdout);
+  let backend = TermionBackend::new(stdout);
+  let mut terminal = Terminal::new(backend)?;
 
-const CONFIG_INTERMEDIATE: GameConfig = GameConfig {
-  rows: 16,
-  columns: 16,
-  mines: 40,
-};
+  terminal.clear()?;
 
-enum FieldCellType {
-  Mine,
-  Empty(u32),
-}
+  let mut app = App::new("Termion demo", &game_config, options.enhanced_graphics);
+  loop {
+    terminal.draw(|f| ui::draw(f, &mut app))?;
 
-struct FieldCell {
-  revealed: bool,
-  cell_type: FieldCellType,
-}
-
-struct Field {
-  config: GameConfig,
-  cells: Vec<FieldCell>,
-}
-
-impl Field {
-  fn new(config: &GameConfig) -> Field {
-    let mut rng = thread_rng();
-    let size = (config.rows * config.columns) as usize;
-    let mut field = Field {
-      config: config.clone(),
-      cells: Vec::with_capacity(size),
-    };
-
-    let mut bombs: HashSet<usize> = HashSet::new();
-
-    while bombs.len() < config.mines as usize {
-      bombs.insert(rng.gen_range(0, size));
-    }
-
-    for i in 0..size {
-      field.cells.push(FieldCell {
-        revealed: false,
-        cell_type: if bombs.contains(&i) {
-          FieldCellType::Mine
-        } else {
-          FieldCellType::Empty(0)
-        },
-      });
-    }
-
-    fn increment_count(field: &mut Field, i: usize) {
-      if let Some(cell) = field.cells.get_mut(i) {
-        if let FieldCellType::Empty(n) = &mut cell.cell_type {
-          *n += 1;
+    match events.next()? {
+      Event::Input(key) => match key {
+        //   Key::Up | Key::Char('k') => {
+        //     app.on_up();
+        //   }
+        //   Key::Down | Key::Char('j') => {
+        //     app.on_down();
+        //   }
+        //   Key::Left | Key::Char('h') => {
+        //     app.on_left();
+        //   }
+        //   Key::Right | Key::Char('l') => {
+        //     app.on_right();
+        //   }
+        Key::Char(c) => {
+          app.on_key(c);
         }
+        _ => {}
+      },
+      Event::Click(x, y) => {
+        app.set_click(x, y);
       }
+      // Event::Tick => {
+      //   app.on_tick();
+      // }
+      _ => {}
     }
 
-    // increment counters
-    for i in 0..size {
-      if bombs.contains(&i) {
-        // up
-        if i > config.columns {
-          increment_count(&mut field, i - config.columns);
-
-          // up left
-          if i % config.columns > 0 {
-            increment_count(&mut field, i - config.columns - 1);
-          }
-
-          // up right
-          if i / config.rows < config.columns {
-            increment_count(&mut field, i - config.columns + 1);
-          }
-        }
-
-        // down
-        if i / config.columns < config.rows - 1 {
-          increment_count(&mut field, i + config.columns);
-
-          // up left
-          if i % config.columns > 0 {
-            increment_count(&mut field, i + config.columns - 1);
-          }
-
-          // up right
-          if i / config.rows < config.columns {
-            increment_count(&mut field, i + config.columns + 1);
-          }
-        }
-
-        // left
-        if i % config.columns > 0 {
-          increment_count(&mut field, i - 1);
-        }
-
-        // right
-        if i / config.rows < config.columns {
-          increment_count(&mut field, i + 1);
-        }
-      }
+    if app.should_quit {
+      break;
     }
-
-    field
   }
 
-  fn print(&self) {}
-
-  fn format(&self, show_all: bool) -> String {
-    let mut text = String::from("\n");
-    let mut i = 0usize;
-    let len = self.cells.len();
-    while i < len {
-      if i > 0 && i % self.config.rows as usize == 0 {
-        // left padding
-        text.push_str("\n");
-      }
-      if i % self.config.columns as usize == 0 {
-        // left padding
-        text.push_str("  ");
-      }
-
-      let cell = self.cells.get(i).unwrap();
-
-      if cell.revealed || show_all {
-        match cell.cell_type {
-          FieldCellType::Mine => {
-            text.push_str("💣");
-          }
-          FieldCellType::Empty(n) => {
-            if n > 0 {
-              text.push_str(format!("{} ", n).as_str());
-            } else {
-              text.push_str("  ");
-            };
-          }
-        }
-      } else {
-        text.push_str("🔲");
-      }
-
-      i += 1;
-    }
-    text.push('\n');
-    text
-  }
-}
-
-impl fmt::Display for Field {
-  fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-    write!(f, "{}\n{}\n--- ---", self.config, self.format(true))
-  }
-}
-
-fn main() {
-  let game_config = CONFIG_INTERMEDIATE;
-
-  let field = Field::new(&game_config);
-
-  println!("{}", field);
+  Ok(())
 }

@@ -134,6 +134,21 @@ impl Field {
         field
     }
 
+    pub fn from(field_text: Vec<&str>) -> Field {
+        let config = GameConfig {
+            rows: field_text.len(),
+            columns: field_text.get(0).unwrap().len(),
+            mines: field_text.into_iter().map(|c| c.matches("x").count()).sum(),
+        };
+        let size = (config.rows * config.columns);
+        let mut field = Field {
+            config,
+            cells: Vec::with_capacity(size),
+        };
+
+        field
+    }
+
     pub fn print(&self) {}
 
     pub fn format(&self, show_all: bool) -> String {
@@ -223,5 +238,29 @@ impl Field {
 impl fmt::Display for Field {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}\n{}\n--- ---", self.config, self.format(true))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn creates_a_field() {
+        let field = Field::new(&CONFIG_BEGINNER);
+
+        assert_eq!(
+            field.cells.len(),
+            CONFIG_BEGINNER.columns * CONFIG_BEGINNER.rows
+        );
+    }
+
+    #[test]
+    fn from_parsing() {
+        let field = Field::from(vec!["ooooo", "ooxoo", "ooxoo", "ooooo"]);
+
+        assert_eq!(field.config.mines, 2);
+        assert_eq!(field.config.columns, 5);
+        assert_eq!(field.config.rows, 4);
     }
 }

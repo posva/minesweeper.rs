@@ -5,6 +5,7 @@ use rand::thread_rng;
 use rand::Rng;
 
 use std::collections::HashSet;
+use std::iter::FromIterator;
 
 #[derive(Clone)]
 pub struct GameConfig {
@@ -111,15 +112,15 @@ impl Field {
                 }
 
                 // down
-                if i / self.config.columns < self.config.rows - 1 {
+                if i < (self.config.rows - 1) * self.config.columns {
                     self.increment_cell_count(i + self.config.columns);
 
-                    // up left
+                    // down left
                     if i % self.config.columns > 0 {
                         self.increment_cell_count(i + self.config.columns - 1);
                     }
 
-                    // up right
+                    // down right
                     if i / self.config.rows < self.config.columns {
                         self.increment_cell_count(i + self.config.columns + 1);
                     }
@@ -144,7 +145,7 @@ impl Field {
             columns: field_text.get(0).unwrap().len(),
             mines: field_text.iter().map(|c| c.matches("x").count()).sum(),
         };
-        let size = (config.rows * config.columns);
+        let size = config.rows * config.columns;
 
         let mut field = Field {
             config,
@@ -152,10 +153,10 @@ impl Field {
             bombs: HashSet::new(),
         };
 
-        for line in field_text.iter() {
-            for (i, cell) in line.chars().enumerate() {
+        for (y, line) in field_text.iter().enumerate() {
+            for (x, cell) in line.chars().enumerate() {
                 if cell == 'x' {
-                    field.bombs.insert(i);
+                    field.bombs.insert(x + y * field.config.columns);
                 }
                 field.cells.push(FieldCell {
                     revealed: false,
@@ -180,11 +181,11 @@ impl Field {
         let mut i = 0usize;
         let len = self.cells.len();
         while i < len {
-            if i > 0 && i % self.config.rows as usize == 0 {
+            if i > 0 && i % self.config.columns == 0 {
                 // left padding
                 text.push_str("\n");
             }
-            if i % self.config.columns as usize == 0 {
+            if i % self.config.columns == 0 {
                 // left padding
                 text.push_str("  ");
             }
@@ -219,7 +220,7 @@ impl Field {
         let len = self.cells.len();
         let mut text = String::new();
         while i < len {
-            if i > 0 && i % self.config.rows == 0 {
+            if i > 0 && i % self.config.columns == 0 {
                 // new line
                 text.push('\n');
             }
@@ -235,12 +236,12 @@ impl Field {
                         if n > 0 {
                             text.push_str(&n.to_string());
                         } else {
-                            text.push(' ');
+                            text.push('-');
                         };
                     }
                 }
             } else {
-                text.push(' ');
+                text.push('-');
             }
 
             i += 1;
@@ -257,7 +258,7 @@ impl Field {
         // line we are building
         let mut line_buffer = String::new();
         while i < len {
-            if i > 0 && i % self.config.rows as usize == 0 {
+            if i > 0 && i % self.config.columns as usize == 0 {
                 // new line
                 lines.push(line_buffer);
                 line_buffer = String::new();
@@ -321,6 +322,11 @@ mod tests {
         assert_eq!(field.config.mines, 2);
         assert_eq!(field.config.columns, 5);
         assert_eq!(field.config.rows, 4);
+        let vec: Vec<usize> = vec![7, 12];
+        assert_eq!(
+            field.bombs,
+            HashSet::from_iter(vec.into_iter().collect::<Vec<_>>())
+        );
     }
 
     #[test]
@@ -330,10 +336,10 @@ mod tests {
         assert_eq!(
             field.as_text_ascii(true),
             "\
- 111
- 2x2
- 2x2
- 111\
+-111-
+-2x2-
+-2x2-
+-111-\
 "
         );
     }

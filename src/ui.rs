@@ -90,15 +90,6 @@ where
     // ]),
     // ];
 
-    let block = Block::default().borders(Borders::ALL)
-    // .title(Span::styled(
-    //     "Footer",
-    //     Style::default()
-    //         .fg(Color::Magenta)
-    //         .add_modifier(Modifier::BOLD),
-    // ))
-    ;
-
     // TODO: responsive layout vertical /horizontal
     let chunks = Layout::default()
         .direction(Direction::Horizontal)
@@ -107,13 +98,29 @@ where
                 // * 2 because double size
                 // + 2 for borders
                 Constraint::Length(field.config.columns as u16 * 2 + 2),
+                Constraint::Length(field.config.columns as u16 * 2 + 2),
                 Constraint::Min(5),
             ]
             .as_ref(),
         )
         .split(area);
 
-    let lines = vec![String::from("One"), String::from("Two")];
+    let block = Block::default().borders(Borders::ALL);
+    // .title(Span::styled(
+    //     "Field",
+    //     Style::default()
+    //         .fg(Color::Blue)
+    //         .add_modifier(Modifier::BOLD),
+    // ));
+
+    let paragraph = Paragraph::new(field.as_text_ascii(true))
+        .block(block)
+        .wrap(Wrap { trim: true });
+    // let paragraph = Paragraph::new(field.as_lines(false).map(|text| Spans::from(text)).collect()).block(block).wrap(Wrap { trim: true });
+
+    f.render_widget(paragraph, chunks[0]);
+
+    let block = Block::default().borders(Borders::ALL);
     let paragraph = Paragraph::new(
         field
             .as_lines(true)
@@ -123,7 +130,6 @@ where
     )
     .block(block)
     .wrap(Wrap { trim: true });
-    // let paragraph = Paragraph::new(field.as_lines(false).map(|text| Spans::from(text)).collect()).block(block).wrap(Wrap { trim: true });
 
-    f.render_widget(paragraph, chunks[0]);
+    f.render_widget(paragraph, chunks[1]);
 }

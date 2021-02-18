@@ -90,49 +90,55 @@ impl Field {
                 *n += 1;
             }
         }
+        // println!("{}", self.as_text_ascii(true));
+        // println!("===");
     }
 
     fn compute_field(&mut self) {
         // increment counters
         for i in 0..self.cells.len() {
             if self.bombs.contains(&i) {
+                let has_left = i % self.config.columns > 0;
+                let has_right = i % self.config.columns < self.config.columns - 1;
                 // up
                 if i > self.config.columns {
-                    self.increment_cell_count(i - self.config.columns);
+                    let up_pos = i - self.config.columns;
+                    self.increment_cell_count(up_pos);
 
                     // up left
-                    if i % self.config.columns > 0 {
-                        self.increment_cell_count(i - self.config.columns - 1);
+                    if has_left {
+                        self.increment_cell_count(up_pos - 1);
                     }
 
                     // up right
-                    if i / self.config.rows < self.config.columns {
-                        self.increment_cell_count(i - self.config.columns + 1);
+                    if has_right {
+                        self.increment_cell_count(up_pos + 1);
                     }
                 }
 
                 // down
-                if i < (self.config.rows - 1) * self.config.columns {
-                    self.increment_cell_count(i + self.config.columns);
+                if i / self.config.columns < self.config.rows - 1 {
+                    let down_pos = i + self.config.columns;
+                    self.increment_cell_count(down_pos);
 
                     // down left
-                    if i % self.config.columns > 0 {
-                        self.increment_cell_count(i + self.config.columns - 1);
+                    if has_left {
+                        self.increment_cell_count(down_pos - 1);
                     }
 
                     // down right
-                    if i / self.config.rows < self.config.columns {
-                        self.increment_cell_count(i + self.config.columns + 1);
+                    if has_right {
+                        self.increment_cell_count(down_pos + 1);
                     }
                 }
 
                 // left
-                if i % self.config.columns > 0 {
+                if has_left {
                     self.increment_cell_count(i - 1);
                 }
 
                 // right
-                if i / self.config.rows < self.config.columns {
+                if has_right {
                     self.increment_cell_count(i + 1);
                 }
             }
@@ -251,22 +257,16 @@ impl Field {
     }
 
     pub fn as_lines(&self, show_all: bool) -> Vec<String> {
-        let mut text = String::from("\n");
-        let mut i = 0usize;
+        let mut i: usize = 0;
         let len = self.cells.len();
         let mut lines = Vec::new();
         // line we are building
         let mut line_buffer = String::new();
         while i < len {
-            if i > 0 && i % self.config.columns as usize == 0 {
+            if i > 0 && i % self.config.columns == 0 {
                 // new line
                 lines.push(line_buffer);
                 line_buffer = String::new();
-                // text.push_str("\n");
-            }
-            if i % self.config.columns as usize == 0 {
-                // left padding
-                text.push_str("  ");
             }
 
             let cell = self.cells.get(i).unwrap();
@@ -290,6 +290,9 @@ impl Field {
 
             i += 1;
         }
+
+        // last line
+        lines.push(line_buffer);
 
         lines
     }
@@ -341,6 +344,31 @@ mod tests {
 -2x2-
 -111-\
 "
+        );
+    }
+
+    #[test]
+    fn field_edge_cases() {
+        let field = Field::from(vec!["xoxox", "ooooo", "xooox", "xoxox"]);
+
+        assert_eq!(
+            field.as_text_ascii(true),
+            "\
+x2x2x
+23132
+x313x
+x3x3x\
+"
+        );
+    }
+
+    #[test]
+    fn print_emojis() {
+        let field = Field::from(vec!["oxxxo", "oxoxo", "oxxxo", "xoooo"]);
+
+        assert_eq!(
+            field.as_lines(true),
+            vec!["2 💣💣💣2 ", "3 💣8 💣3 ", "3 💣💣💣2 ", "💣3 3 2 1 "]
         );
     }
 }

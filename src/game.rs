@@ -51,7 +51,7 @@ pub struct FieldCell {
 pub struct Field {
     pub config: GameConfig,
     cells: Vec<FieldCell>,
-    bombs: HashSet<usize>,
+    mines: HashSet<usize>,
 }
 
 impl Field {
@@ -61,17 +61,17 @@ impl Field {
         let mut field = Field {
             config: config.clone(),
             cells: Vec::with_capacity(size),
-            bombs: HashSet::new(),
+            mines: HashSet::new(),
         };
 
-        while field.bombs.len() < config.mines {
-            field.bombs.insert(rng.gen_range(0, size));
+        while field.mines.len() < config.mines {
+            field.mines.insert(rng.gen_range(0, size));
         }
 
         for i in 0..size {
             field.cells.push(FieldCell {
                 revealed: false,
-                cell_type: if field.bombs.contains(&i) {
+                cell_type: if field.mines.contains(&i) {
                     FieldCellType::Mine
                 } else {
                     FieldCellType::Empty(0)
@@ -94,10 +94,13 @@ impl Field {
         // println!("===");
     }
 
+    /**
+     * Compute the field (number of mines) based on the current config. Should only be called once
+     */
     fn compute_field(&mut self) {
         // increment counters
         for i in 0..self.cells.len() {
-            if self.bombs.contains(&i) {
+            if self.mines.contains(&i) {
                 let has_left = i % self.config.columns > 0;
                 let has_right = i % self.config.columns < self.config.columns - 1;
                 // up
@@ -145,6 +148,70 @@ impl Field {
         }
     }
 
+    pub fn reveal_cell(&mut self, pos: usize) -> bool {
+        if let Some(cell) = self.cells.get_mut(pos) {
+            if cell.revealed {
+                return false;
+            }
+            cell.revealed = true;
+            match cell.cell_type {
+                FieldCellType::Mine => return true,
+                FieldCellType::Empty(n) => {
+                    if n == 0 {
+                        // reveal others
+                        let has_left = pos % self.config.columns > 0;
+                        let has_right = pos % self.config.columns < self.config.columns - 1;
+                        if pos > self.config.columns {
+                            let up_pos = pos - self.config.columns;
+                            self.reveal_cell(up_pos);
+
+                            // up left
+                            if has_left {
+                                self.reveal_cell(up_pos - 1);
+                            }
+
+                            // up right
+                            if has_right {
+                                self.reveal_cell(up_pos + 1);
+                            }
+                        }
+
+                        // down
+                        if pos / self.config.columns < self.config.rows - 1 {
+                            let down_pos = pos + self.config.columns;
+                            self.reveal_cell(down_pos);
+
+                            // down left
+                            if has_left {
+                                self.reveal_cell(down_pos - 1);
+                            }
+
+                            // down right
+                            if has_right {
+                                self.reveal_cell(down_pos + 1);
+                            }
+                        }
+
+                        // left
+                        if has_left {
+                            self.reveal_cell(pos - 1);
+                        }
+
+                        // right
+                        if has_right {
+                            self.reveal_cell(pos + 1);
+                        }
+                    }
+                }
+            }
+        }
+
+        false
+    }
+
+    /**
+     * Create a field mine from a vec of strings. Used for tests.
+     */
     pub fn from(field_text: Vec<&str>) -> Field {
         let config = GameConfig {
             rows: field_text.len(),
@@ -156,13 +223,13 @@ impl Field {
         let mut field = Field {
             config,
             cells: Vec::with_capacity(size),
-            bombs: HashSet::new(),
+            mines: HashSet::new(),
         };
 
         for (y, line) in field_text.iter().enumerate() {
             for (x, cell) in line.chars().enumerate() {
                 if cell == 'x' {
-                    field.bombs.insert(x + y * field.config.columns);
+                    field.mines.insert(x + y * field.config.columns);
                 }
                 field.cells.push(FieldCell {
                     revealed: false,
@@ -179,8 +246,6 @@ impl Field {
 
         field
     }
-
-    pub fn print(&self) {}
 
     pub fn format(&self, show_all: bool) -> String {
         let mut text = String::from("\n");
@@ -247,7 +312,7 @@ impl Field {
                     }
                 }
             } else {
-                text.push('-');
+                text.push('?');
             }
 
             i += 1;
@@ -327,7 +392,7 @@ mod tests {
         assert_eq!(field.config.rows, 4);
         let vec: Vec<usize> = vec![7, 12];
         assert_eq!(
-            field.bombs,
+            field.mines,
             HashSet::from_iter(vec.into_iter().collect::<Vec<_>>())
         );
     }
@@ -369,6 +434,62 @@ x3x3x\
         assert_eq!(
             field.as_lines(true),
             vec!["2 💣💣💣2 ", "3 💣8 💣3 ", "3 💣💣💣2 ", "💣3 3 2 1 "]
+        );
+    }
+
+    #[test]
+    fn reveal_cells() {
+        let mut field = Field::from(vec!["oxxxo", "oxoxo", "ooooo", "xoooo"]);
+
+        println!("{}", field.as_text_ascii(true));
+
+        assert_eq!(
+            field.as_text_ascii(false),
+            "\
+?????
+?????
+?????
+?????\
+"
+        );
+
+        assert_eq!(field.reveal_cell(0), false);
+
+        assert_eq!(
+            field.as_text_ascii(false),
+            "\
+2????
+?????
+?????
+?????\
+"
+        );
+
+        assert_eq!(
+            field.reveal_cell(field.config.columns * field.config.rows - 1),
+            false
+        );
+
+        assert_eq!(
+            field.as_text_ascii(false),
+            "\
+2????
+?????
+?2211
+?1---\
+"
+        );
+
+        assert_eq!(field.reveal_cell(1), true);
+
+        assert_eq!(
+            field.as_text_ascii(false),
+            "\
+2x???
+?????
+?2211
+?1---\
+"
         );
     }
 }

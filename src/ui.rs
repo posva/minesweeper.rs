@@ -72,24 +72,6 @@ fn draw_screen<B>(f: &mut Frame<B>, area: Rect, field: &game::Field)
 where
     B: Backend,
 {
-    let mut someText = Vec::new();
-    someText.push(Spans::from(
-        "This is a paragraph with several lines. You can change style your text the way you want",
-    ));
-    // someText.push(Spans::from("THis is spans"));
-    // let mut someText = vec![
-    // Spans::from(""),
-    // Spans::from(vec![
-    //     Span::from(String::from("For example: ")),
-    //     Span::styled("under", Style::default().fg(Color::Red)),
-    //     Span::raw(" "),
-    //     Span::styled("the", Style::default().fg(Color::Green)),
-    //     Span::raw(" "),
-    //     Span::styled("rainbow", Style::default().fg(Color::Blue)),
-    //     Span::raw("."),
-    // ]),
-    // ];
-
     // TODO: responsive layout vertical /horizontal
     let chunks = Layout::default()
         .direction(Direction::Horizontal)
@@ -98,27 +80,11 @@ where
                 // * 2 because double size
                 // + 2 for borders
                 Constraint::Length(field.config.columns as u16 * 2 + 2),
-                Constraint::Length(field.config.columns as u16 * 2 + 2),
                 Constraint::Min(5),
             ]
             .as_ref(),
         )
         .split(area);
-
-    let block = Block::default().borders(Borders::ALL);
-    // .title(Span::styled(
-    //     "Field",
-    //     Style::default()
-    //         .fg(Color::Blue)
-    //         .add_modifier(Modifier::BOLD),
-    // ));
-
-    let paragraph = Paragraph::new(field.as_text_ascii(true))
-        .block(block)
-        .wrap(Wrap { trim: true });
-    // let paragraph = Paragraph::new(field.as_lines(false).map(|text| Spans::from(text)).collect()).block(block).wrap(Wrap { trim: true });
-
-    f.render_widget(paragraph, chunks[0]);
 
     let block = Block::default().borders(Borders::ALL);
     let paragraph = Paragraph::new(
@@ -128,8 +94,18 @@ where
             .map(Spans::from)
             .collect::<Vec<_>>(),
     )
-    .block(block)
-    .wrap(Wrap { trim: true });
+    .block(block);
+    // not necessary
+    // .wrap(Wrap { trim: false });
 
-    f.render_widget(paragraph, chunks[1]);
+    f.render_widget(paragraph, chunks[0]);
+
+    // let block = Block::default().borders(Borders::ALL);
+
+    // let paragraph = Paragraph::new(field.as_text_ascii(true))
+    //     .block(block)
+    //     .wrap(Wrap { trim: true });
+    // let paragraph = Paragraph::new(field.as_lines(false).map(|text| Spans::from(text)).collect()).block(block).wrap(Wrap { trim: true });
+
+    // f.render_widget(paragraph, chunks[1]);
 }

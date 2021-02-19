@@ -86,6 +86,36 @@ where
         )
         .split(area);
 
+    draw_minefield(f, chunks[0], field);
+
+    // let block = Block::default().borders(Borders::ALL);
+
+    // let paragraph = Paragraph::new(field.as_text_ascii(true))
+    //     .block(block)
+    //     .wrap(Wrap { trim: true });
+    // let paragraph = Paragraph::new(field.as_lines(false).map(|text| Spans::from(text)).collect()).block(block).wrap(Wrap { trim: true });
+
+    // f.render_widget(paragraph, chunks[1]);
+}
+
+fn draw_minefield<B>(f: &mut Frame<B>, area: Rect, field: &game::Field)
+where
+    B: Backend,
+{
+    let chunks = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints(
+            [
+                // + 2 for borders
+                Constraint::Length(field.config.rows as u16 + 2),
+                Constraint::Max(4),
+                Constraint::Max(0),
+            ]
+            .as_ref(),
+        )
+        .split(area);
+
+    // actual minefield
     let block = Block::default().borders(Borders::ALL);
     let paragraph = Paragraph::new(
         field
@@ -100,12 +130,33 @@ where
 
     f.render_widget(paragraph, chunks[0]);
 
-    // let block = Block::default().borders(Borders::ALL);
+    draw_field_config(f, chunks[1], field);
+}
 
-    // let paragraph = Paragraph::new(field.as_text_ascii(true))
-    //     .block(block)
-    //     .wrap(Wrap { trim: true });
-    // let paragraph = Paragraph::new(field.as_lines(false).map(|text| Spans::from(text)).collect()).block(block).wrap(Wrap { trim: true });
+fn draw_field_config<B>(f: &mut Frame<B>, area: Rect, field: &game::Field)
+where
+    B: Backend,
+{
+    let block = Block::default()
+        .title("Config")
+        // .style(Style::default().fg(Color::White).bg(Color::Black))
+        .borders(Borders::ALL);
 
-    // f.render_widget(paragraph, chunks[1]);
+    let label_style = Style::default()
+        .fg(Color::White)
+        .add_modifier(Modifier::BOLD);
+    let text = vec![
+        Spans::from(vec![
+            Span::styled("Size: ", label_style),
+            Span::raw(format!("{}x{}", field.config.columns, field.config.rows)),
+        ]),
+        Spans::from(vec![
+            Span::styled("Mines: ", label_style),
+            Span::from(format!("{} 💣", field.config.mines)),
+        ]),
+    ];
+
+    let paragraph = Paragraph::new(text).block(block);
+
+    f.render_widget(paragraph, area);
 }

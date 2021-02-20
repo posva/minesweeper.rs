@@ -38,6 +38,12 @@ pub const CONFIG_INTERMEDIATE: GameConfig = GameConfig {
     mines: 40,
 };
 
+pub const CONFIG_EXPERT: GameConfig = GameConfig {
+    rows: 16,
+    columns: 30,
+    mines: 99,
+};
+
 pub enum FieldCellType {
     Mine,
     Empty(u32),
@@ -319,6 +325,43 @@ impl Field {
         }
 
         text
+    }
+
+    pub fn get_field(&self) -> Vec<Vec<u32>> {
+        let mut i: usize = 0;
+        let len = self.cells.len();
+        let mut lines = Vec::new();
+
+        let mut line_buffer = Vec::new();
+
+        // show all if lost
+        let show_all = false;
+
+        while i < len {
+            if i > 0 && i % self.config.columns == 0 {
+                // new line
+                lines.push(line_buffer);
+                line_buffer = Vec::new();
+            }
+
+            let cell = self.cells.get(i).unwrap();
+
+            if cell.revealed || show_all {
+                match cell.cell_type {
+                    FieldCellType::Mine => line_buffer.push(9),
+                    FieldCellType::Empty(n) => line_buffer.push(n),
+                }
+            } else {
+                line_buffer.push(10);
+            }
+
+            i += 1;
+        }
+
+        // last line
+        lines.push(line_buffer);
+
+        lines
     }
 
     pub fn as_lines(&self, show_all: bool) -> Vec<String> {

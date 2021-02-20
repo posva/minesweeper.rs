@@ -5,6 +5,7 @@ pub struct App<'a> {
     pub should_quit: bool,
     pub enhanced_graphics: bool,
     pub click: (u16, u16),
+    pub last_reveal: usize,
 
     pub field: Field,
 }
@@ -16,6 +17,7 @@ impl<'a> App<'a> {
             should_quit: false,
             enhanced_graphics,
             click: (0, 0),
+            last_reveal: 0,
             field: Field::new(config),
         }
     }
@@ -32,6 +34,17 @@ impl<'a> App<'a> {
             }
             _ => {}
         }
+    }
+
+    pub fn on_click(&mut self, x: u16, y: u16) {
+        self.set_click(x, y);
+        // positions start at 1 + remove the border on the left
+        let field_x: usize = (x as usize - 2) / 2;
+        // positions start at 1 + remove the border on the top + title
+        let field_y: usize = y as usize - 3;
+
+        self.last_reveal = field_y * self.field.config.columns + field_x;
+        self.field.reveal_cell(self.last_reveal);
     }
 
     pub fn set_click(&mut self, x: u16, y: u16) {

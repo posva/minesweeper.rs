@@ -21,7 +21,7 @@ pub fn draw<B: Backend>(f: &mut Frame<B>, app: &mut app::App) {
         .constraints([Constraint::Length(1), Constraint::Min(0)].as_ref())
         .split(f.size());
 
-    draw_title(f, chunks[0]);
+    draw_title(f, chunks[0], &app);
     draw_screen(f, chunks[1], &app.field);
 
     let screen = Layout::default()
@@ -48,12 +48,15 @@ pub fn draw<B: Backend>(f: &mut Frame<B>, app: &mut app::App) {
     //   .collect();
 }
 
-fn draw_title<B>(f: &mut Frame<B>, area: Rect)
+fn draw_title<B>(f: &mut Frame<B>, area: Rect, app: &app::App)
 where
     B: Backend,
 {
     let text = Span::styled(
-        "Minesweeper",
+        format!(
+            "Minesweeper {} for ({}x{})",
+            app.last_reveal, app.click.0, app.click.1
+        ),
         Style::default()
             // TODO: why only one style?
             .add_modifier(Modifier::BOLD)
@@ -115,13 +118,52 @@ where
         )
         .split(area);
 
+    let number_styles = vec![
+        Style::default(),
+        // 1
+        Style::default().fg(Color::LightBlue),
+        // 2
+        Style::default().fg(Color::LightGreen),
+        // 3
+        Style::default().fg(Color::LightYellow),
+        // 4
+        Style::default().fg(Color::LightMagenta),
+        // 5
+        Style::default().fg(Color::LightRed),
+        // 6
+        Style::default()
+            .fg(Color::Yellow)
+            .add_modifier(Modifier::BOLD),
+        // 7
+        Style::default()
+            .fg(Color::Blue)
+            .add_modifier(Modifier::BOLD),
+        // 8
+        Style::default().fg(Color::Red).add_modifier(Modifier::BOLD),
+        // 9 Mine
+        Style::default().fg(Color::Red).add_modifier(Modifier::BOLD),
+        // 10 Empty
+        Style::default(),
+    ];
+
     // actual minefield
     let block = Block::default().borders(Borders::ALL);
     let paragraph = Paragraph::new(
         field
-            .as_lines(true)
+            .get_field()
             .into_iter()
-            .map(Spans::from)
+            .map(|line| {
+                Spans::from(
+                    line.into_iter()
+                        .map(|cell| {
+                            Span::styled(
+                                cell_to_string(cell),
+                                *number_styles.get(cell as usize).unwrap(),
+                            )
+                        })
+                        .collect::<Vec<_>>(),
+                )
+            })
             .collect::<Vec<_>>(),
     )
     .block(block);
@@ -131,6 +173,18 @@ where
     f.render_widget(paragraph, chunks[0]);
 
     draw_field_config(f, chunks[1], field);
+}
+
+fn cell_to_string(mines: u32) -> String {
+    if mines == 0 {
+        String::from("  ")
+    } else if mines == 9 {
+        String::from("💣")
+    } else if mines == 10 {
+        String::from("🔲")
+    } else {
+        format!(" {}", mines)
+    }
 }
 
 fn draw_field_config<B>(f: &mut Frame<B>, area: Rect, field: &game::Field)

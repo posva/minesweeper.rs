@@ -39,12 +39,18 @@ impl<'a> App<'a> {
     pub fn on_click(&mut self, x: u16, y: u16) {
         self.set_click(x, y);
         // positions start at 1 + remove the border on the left
-        let field_x: usize = (x as usize - 2) / 2;
+        let field_x: isize = (x as isize - 2) / 2;
         // positions start at 1 + remove the border on the top + title
-        let field_y: usize = y as usize - 3;
+        let field_y: isize = y as isize - 3;
 
-        self.last_reveal = field_y * self.field.config.columns + field_x;
-        self.field.reveal_cell(self.last_reveal);
+        if field_x >= 0
+            && field_x < self.field.config.columns as isize
+            && field_y >= 0
+            && field_y < self.field.config.rows as isize
+        {
+            self.last_reveal = field_y as usize * self.field.config.columns + field_x as usize;
+            self.field.reveal_cell(self.last_reveal);
+        }
     }
 
     pub fn set_click(&mut self, x: u16, y: u16) {

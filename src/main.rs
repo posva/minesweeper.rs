@@ -61,8 +61,8 @@ fn main() -> Result<(), Box<dyn Error>> {
                 }
                 _ => {}
             },
-            Event::Click(x, y) => {
-                app.on_click(x, y);
+            Event::Click(button, x, y) => {
+                app.on_click(button, x, y);
             }
             // Event::Tick => {
             //   app.on_tick();

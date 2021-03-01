@@ -36,8 +36,7 @@ impl<'a> App<'a> {
         }
     }
 
-    pub fn on_click(&mut self, x: u16, y: u16) {
-        self.set_click(x, y);
+    fn to_field_index(&self, x: u16, y: u16) -> Option<usize> {
         // positions start at 1 + remove the border on the left
         let field_x: isize = (x as isize - 2) / 2;
         // positions start at 1 + remove the border on the top + title
@@ -48,9 +47,34 @@ impl<'a> App<'a> {
             && field_y >= 0
             && field_y < self.field.config.rows as isize
         {
-            self.last_reveal = field_y as usize * self.field.config.columns + field_x as usize;
-            self.field.reveal_cell(self.last_reveal);
+            Some(field_y as usize * self.field.config.columns + field_x as usize)
+        } else {
+            None
         }
+    }
+
+    pub fn on_click(&mut self, button: termion::event::MouseButton, x: u16, y: u16) {
+        self.set_click(x, y);
+        if let Some(index) = self.to_field_index(x, y) {
+            self.last_reveal = index;
+            match button {
+                termion::event::MouseButton::Left => {
+                    self.field.reveal_cell(self.last_reveal);
+                }
+                termion::event::MouseButton::Middle
+                | termion::event::MouseButton::WheelDown
+                | termion::event::MouseButton::WheelUp => {
+                    // self.field.toggle_flag(self.last_reveal);
+                }
+                _ => {}
+            }
+        }
+    }
+
+    pub fn on_press(&mut self) {
+        // 🙂
+        // TODO: show a 😵
+        // self.field.start_press(x, y)
     }
 
     pub fn set_click(&mut self, x: u16, y: u16) {

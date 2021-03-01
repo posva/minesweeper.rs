@@ -12,7 +12,8 @@ use termion::input::TermRead;
 
 pub enum Event<I> {
     Input(I),
-    Click(u16, u16),
+    Drag(termion::event::MouseButton, u16, u16),
+    Click(termion::event::MouseButton, u16, u16),
     Tick,
 }
 
@@ -40,6 +41,11 @@ impl Default for Config {
     }
 }
 
+enum MousePress {
+    Button(termion::event::MouseButton, u16, u16),
+    None,
+}
+
 impl Events {
     pub fn new() -> Events {
         Events::with_config(Config::default())
@@ -51,11 +57,13 @@ impl Events {
         let input_handle = {
             let tx = tx.clone();
             let ignore_exit_key = ignore_exit_key.clone();
+            let mut current_mouse_press = MousePress::None;
+
             thread::spawn(move || {
                 let stdin = io::stdin();
                 for evt in stdin.events() {
-                    if let Ok(keyOrMouse) = evt {
-                        match keyOrMouse {
+                    if let Ok(key_or_mouse) = evt {
+                        match key_or_mouse {
                             termion::event::Event::Key(key) => {
                                 if let Err(err) = tx.send(Event::Input(key)) {
                                     eprintln!("{}", err);
@@ -68,11 +76,25 @@ impl Events {
                                 }
                             }
                             termion::event::Event::Mouse(mouse_event) => match mouse_event {
-                                termion::event::MouseEvent::Press(_, x, y) => {
-                                    if let Err(err) = tx.send(Event::Click(x, y)) {
-                                        eprintln!("{}", err);
-                                        return;
+                                termion::event::MouseEvent::Release(x, y) => {
+                                    if let MousePress::Button(button, _, _) = current_mouse_press {
+                                        if let Err(err) = tx.send(Event::Click(button, x, y)) {
+                                            eprintln!("{}", err);
+                                            return;
+                                        }
                                     }
+                                    current_mouse_press = MousePress::None;
+                                }
+                                termion::event::MouseEvent::Hold(x, y) => {
+                                    if let MousePress::Button(_, current_x, current_y) =
+                                        &mut current_mouse_press
+                                    {
+                                        *current_x = x;
+                                        *current_y = y;
+                                    }
+                                }
+                                termion::event::MouseEvent::Press(mouse_button, x, y) => {
+                                    current_mouse_press = MousePress::Button(mouse_button, x, y);
                                 }
                                 _ => {}
                             },

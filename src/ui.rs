@@ -178,12 +178,15 @@ where
 fn cell_to_string(mines: u32) -> String {
     if mines == 0 {
         String::from("  ")
+    } else if mines == 8 {
+        String::from("🚩")
     } else if mines == 9 {
         String::from("💣")
     } else if mines == 10 {
         String::from("🔲")
     } else {
-        format!(" {}", mines)
+      let codepoint = 0x245f + mines as u16;
+      String::from_utf16(&[codepoint, 0x20]).unwrap()
     }
 }
 

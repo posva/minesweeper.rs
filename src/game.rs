@@ -1,4 +1,5 @@
 use std::fmt;
+use std::fmt::format;
 
 extern crate rand;
 use rand::thread_rng;
@@ -46,12 +47,88 @@ pub const CONFIG_EXPERT: GameConfig = GameConfig {
 
 pub enum FieldCellType {
     Mine,
-    Empty(u32),
+    Empty(u32), // TODO: can we just use u8?
+}
+
+pub enum FieldCellState {
+    Hidden,
+    Revealed,
+    Flagged,
 }
 
 pub struct FieldCell {
-    revealed: bool,
+    state: FieldCellState,
     cell_type: FieldCellType,
+}
+
+
+impl FieldCell {
+  pub fn as_unicode_str(&self, force_reveal: bool) -> String {
+    if force_reveal {
+      self.as_revealed_str()
+    } else {
+      match self.state {
+        FieldCellState::Hidden => String::from("🔲"),
+        _ => self.as_revealed_str(),
+      }
+    }
+  }
+
+  pub fn as_number(&self, force_reveal: bool) -> u32 {
+    if force_reveal {
+      self.as_revealed_number()
+    } else {
+      match self.state {
+        FieldCellState::Hidden => 10,
+        _ => self.as_revealed_number(),
+      }
+    }
+  }
+
+  fn as_ascii_str(&self, force_reveal: bool) -> String {
+      if force_reveal {
+        self.as_revealed_ascii_str()
+      } else {
+        match self.state {
+          FieldCellState::Hidden => String::from("?"),
+          _ => self.as_revealed_ascii_str(),
+        }
+      }
+  }
+
+  pub fn as_revealed_number(&self) -> u32 {
+    match self.state {
+      FieldCellState::Flagged => 8,
+      _ => match self.cell_type {
+        FieldCellType::Mine => 9,
+        FieldCellType::Empty(mines) => mines,
+      }
+    }
+  }
+
+  pub fn as_revealed_ascii_str(& self) -> String {
+    match self.state {
+      FieldCellState::Flagged => String::from("f"),
+      _ => match self.cell_type {
+        FieldCellType::Mine => String::from("x"),
+        FieldCellType::Empty(mines) => if mines == 0 { String::from("-") } else { format!("{}", mines) }
+      }
+    }
+  }
+
+  pub fn as_revealed_str(& self) -> String {
+    match self.state {
+      FieldCellState::Flagged => String::from("🚩"),
+      _ => match self.cell_type {
+        FieldCellType::Mine => String::from("💣"),
+        FieldCellType::Empty(mines) => {
+          let codepoint = 0x245f + mines as u16;
+          String::from_utf16(&[codepoint]).unwrap()
+        }
+      }
+    }
+  }
+
 }
 
 pub struct Field {
@@ -76,7 +153,7 @@ impl Field {
 
         for i in 0..size {
             field.cells.push(FieldCell {
-                revealed: false,
+                state: FieldCellState::Hidden,
                 cell_type: if field.mines.contains(&i) {
                     FieldCellType::Mine
                 } else {
@@ -154,12 +231,24 @@ impl Field {
         }
     }
 
+
+    pub fn toggle_flag(&mut self, pos: usize) {
+        if let Some(cell) = self.cells.get_mut(pos) {
+          cell.state = match cell.state {
+            FieldCellState::Flagged => FieldCellState::Hidden,
+            _ => FieldCellState::Flagged,
+          }
+        }
+    }
+
     pub fn reveal_cell(&mut self, pos: usize) -> bool {
         if let Some(cell) = self.cells.get_mut(pos) {
-            if cell.revealed {
-                return false;
-            }
-            cell.revealed = true;
+          match cell.state {
+            // a flagged cell cannot be revealed when clicked on
+            // FieldCellState::Flagged => return false,
+            FieldCellState::Revealed => return false,
+            _ => {
+            cell.state = FieldCellState::Revealed;
             match cell.cell_type {
                 FieldCellType::Mine => return true,
                 FieldCellType::Empty(n) => {
@@ -210,6 +299,9 @@ impl Field {
                     }
                 }
             }
+
+            }
+          }
         }
 
         false
@@ -238,7 +330,7 @@ impl Field {
                     field.mines.insert(x + y * field.config.columns);
                 }
                 field.cells.push(FieldCell {
-                    revealed: false,
+                    state: FieldCellState::Hidden,
                     cell_type: if cell == 'x' {
                         FieldCellType::Mine
                     } else {
@@ -269,22 +361,7 @@ impl Field {
 
             let cell = self.cells.get(i).unwrap();
 
-            if cell.revealed || show_all {
-                match cell.cell_type {
-                    FieldCellType::Mine => {
-                        text.push_str("💣");
-                    }
-                    FieldCellType::Empty(n) => {
-                        if n > 0 {
-                            text.push_str(format!("{} ", n).as_str());
-                        } else {
-                            text.push_str("  ");
-                        };
-                    }
-                }
-            } else {
-                text.push_str("🔲");
-            }
+            text.push_str(&cell.as_unicode_str(show_all));
 
             i += 1;
         }
@@ -304,22 +381,7 @@ impl Field {
 
             let cell = self.cells.get(i).unwrap();
 
-            if cell.revealed || show_all {
-                match cell.cell_type {
-                    FieldCellType::Mine => {
-                        text.push('x');
-                    }
-                    FieldCellType::Empty(n) => {
-                        if n > 0 {
-                            text.push_str(&n.to_string());
-                        } else {
-                            text.push('-');
-                        };
-                    }
-                }
-            } else {
-                text.push('?');
-            }
+            text.push_str(&cell.as_ascii_str(show_all));
 
             i += 1;
         }
@@ -346,14 +408,7 @@ impl Field {
 
             let cell = self.cells.get(i).unwrap();
 
-            if cell.revealed || show_all {
-                match cell.cell_type {
-                    FieldCellType::Mine => line_buffer.push(9),
-                    FieldCellType::Empty(n) => line_buffer.push(n),
-                }
-            } else {
-                line_buffer.push(10);
-            }
+            line_buffer.push(cell.as_number(show_all));
 
             i += 1;
         }
@@ -379,22 +434,7 @@ impl Field {
 
             let cell = self.cells.get(i).unwrap();
 
-            if cell.revealed || show_all {
-                match cell.cell_type {
-                    FieldCellType::Mine => {
-                        line_buffer.push_str("💣");
-                    }
-                    FieldCellType::Empty(n) => {
-                        if n > 0 {
-                            line_buffer.push_str(format!("{} ", n).as_str());
-                        } else {
-                            line_buffer.push_str("  ");
-                        };
-                    }
-                }
-            } else {
-                line_buffer.push_str("🔲");
-            }
+            line_buffer.push_str(&cell.as_unicode_str(show_all));
 
             i += 1;
         }
@@ -476,7 +516,7 @@ x3x3x\
 
         assert_eq!(
             field.as_lines(true),
-            vec!["2 💣💣💣2 ", "3 💣8 💣3 ", "3 💣💣💣2 ", "💣3 3 2 1 "]
+            vec!["②💣💣💣②", "③💣⑧💣③", "③💣💣💣②", "💣③③②①"]
         );
     }
 

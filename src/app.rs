@@ -63,8 +63,9 @@ impl<'a> App<'a> {
                 }
                 termion::event::MouseButton::Middle
                 | termion::event::MouseButton::WheelDown
+                | termion::event::MouseButton::Right
                 | termion::event::MouseButton::WheelUp => {
-                    // self.field.toggle_flag(self.last_reveal);
+                    self.field.toggle_flag(self.last_reveal);
                 }
                 _ => {}
             }

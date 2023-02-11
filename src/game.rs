@@ -61,74 +61,78 @@ pub struct FieldCell {
     cell_type: FieldCellType,
 }
 
-
 impl FieldCell {
-  pub fn as_unicode_str(&self, force_reveal: bool) -> String {
-    if force_reveal {
-      self.as_revealed_str()
-    } else {
-      match self.state {
-        FieldCellState::Hidden => String::from("🔲"),
-        _ => self.as_revealed_str(),
-      }
+    pub fn as_unicode_str(&self, force_reveal: bool) -> String {
+        if force_reveal {
+            self.as_revealed_str()
+        } else {
+            match self.state {
+                FieldCellState::Hidden => String::from("🔲"),
+                _ => self.as_revealed_str(),
+            }
+        }
     }
-  }
 
-  pub fn as_number(&self, force_reveal: bool) -> u32 {
-    if force_reveal {
-      self.as_revealed_number()
-    } else {
-      match self.state {
-        FieldCellState::Hidden => 10,
-        _ => self.as_revealed_number(),
-      }
+    pub fn as_number(&self, force_reveal: bool) -> u32 {
+        if force_reveal {
+            self.as_revealed_number()
+        } else {
+            match self.state {
+                FieldCellState::Hidden => 10,
+                _ => self.as_revealed_number(),
+            }
+        }
     }
-  }
 
-  fn as_ascii_str(&self, force_reveal: bool) -> String {
-      if force_reveal {
-        self.as_revealed_ascii_str()
-      } else {
+    fn as_ascii_str(&self, force_reveal: bool) -> String {
+        if force_reveal {
+            self.as_revealed_ascii_str()
+        } else {
+            match self.state {
+                FieldCellState::Hidden => String::from("?"),
+                _ => self.as_revealed_ascii_str(),
+            }
+        }
+    }
+
+    pub fn as_revealed_number(&self) -> u32 {
         match self.state {
-          FieldCellState::Hidden => String::from("?"),
-          _ => self.as_revealed_ascii_str(),
+            FieldCellState::Flagged => 8,
+            _ => match self.cell_type {
+                FieldCellType::Mine => 9,
+                FieldCellType::Empty(mines) => mines,
+            },
         }
-      }
-  }
-
-  pub fn as_revealed_number(&self) -> u32 {
-    match self.state {
-      FieldCellState::Flagged => 8,
-      _ => match self.cell_type {
-        FieldCellType::Mine => 9,
-        FieldCellType::Empty(mines) => mines,
-      }
     }
-  }
 
-  pub fn as_revealed_ascii_str(& self) -> String {
-    match self.state {
-      FieldCellState::Flagged => String::from("f"),
-      _ => match self.cell_type {
-        FieldCellType::Mine => String::from("x"),
-        FieldCellType::Empty(mines) => if mines == 0 { String::from("-") } else { format!("{}", mines) }
-      }
-    }
-  }
-
-  pub fn as_revealed_str(& self) -> String {
-    match self.state {
-      FieldCellState::Flagged => String::from("🚩"),
-      _ => match self.cell_type {
-        FieldCellType::Mine => String::from("💣"),
-        FieldCellType::Empty(mines) => {
-          let codepoint = 0x245f + mines as u16;
-          String::from_utf16(&[codepoint]).unwrap()
+    pub fn as_revealed_ascii_str(&self) -> String {
+        match self.state {
+            FieldCellState::Flagged => String::from("f"),
+            _ => match self.cell_type {
+                FieldCellType::Mine => String::from("x"),
+                FieldCellType::Empty(mines) => {
+                    if mines == 0 {
+                        String::from("-")
+                    } else {
+                        format!("{}", mines)
+                    }
+                }
+            },
         }
-      }
     }
-  }
 
+    pub fn as_revealed_str(&self) -> String {
+        match self.state {
+            FieldCellState::Flagged => String::from("🚩"),
+            _ => match self.cell_type {
+                FieldCellType::Mine => String::from("💣"),
+                FieldCellType::Empty(mines) => {
+                    let codepoint = 0x245f + mines as u16;
+                    String::from_utf16(&[codepoint]).unwrap()
+                }
+            },
+        }
+    }
 }
 
 pub struct Field {
@@ -231,77 +235,75 @@ impl Field {
         }
     }
 
-
     pub fn toggle_flag(&mut self, pos: usize) {
         if let Some(cell) = self.cells.get_mut(pos) {
-          cell.state = match cell.state {
-            FieldCellState::Flagged => FieldCellState::Hidden,
-            _ => FieldCellState::Flagged,
-          }
+            cell.state = match cell.state {
+                FieldCellState::Flagged => FieldCellState::Hidden,
+                _ => FieldCellState::Flagged,
+            }
         }
     }
 
     pub fn reveal_cell(&mut self, pos: usize) -> bool {
         if let Some(cell) = self.cells.get_mut(pos) {
-          match cell.state {
-            // a flagged cell cannot be revealed when clicked on
-            // FieldCellState::Flagged => return false,
-            FieldCellState::Revealed => return false,
-            _ => {
-            cell.state = FieldCellState::Revealed;
-            match cell.cell_type {
-                FieldCellType::Mine => return true,
-                FieldCellType::Empty(n) => {
-                    if n == 0 {
-                        // reveal others
-                        let has_left = pos % self.config.columns > 0;
-                        let has_right = pos % self.config.columns < self.config.columns - 1;
-                        if pos > self.config.columns {
-                            let up_pos = pos - self.config.columns;
-                            self.reveal_cell(up_pos);
+            match cell.state {
+                // a flagged cell cannot be revealed when clicked on
+                // FieldCellState::Flagged => return false,
+                FieldCellState::Revealed => return false,
+                _ => {
+                    cell.state = FieldCellState::Revealed;
+                    match cell.cell_type {
+                        FieldCellType::Mine => return true,
+                        FieldCellType::Empty(n) => {
+                            if n == 0 {
+                                // reveal others
+                                let has_left = pos % self.config.columns > 0;
+                                let has_right = pos % self.config.columns < self.config.columns - 1;
+                                if pos > self.config.columns {
+                                    let up_pos = pos - self.config.columns;
+                                    self.reveal_cell(up_pos);
 
-                            // up left
-                            if has_left {
-                                self.reveal_cell(up_pos - 1);
+                                    // up left
+                                    if has_left {
+                                        self.reveal_cell(up_pos - 1);
+                                    }
+
+                                    // up right
+                                    if has_right {
+                                        self.reveal_cell(up_pos + 1);
+                                    }
+                                }
+
+                                // down
+                                if pos / self.config.columns < self.config.rows - 1 {
+                                    let down_pos = pos + self.config.columns;
+                                    self.reveal_cell(down_pos);
+
+                                    // down left
+                                    if has_left {
+                                        self.reveal_cell(down_pos - 1);
+                                    }
+
+                                    // down right
+                                    if has_right {
+                                        self.reveal_cell(down_pos + 1);
+                                    }
+                                }
+
+                                // left
+                                if has_left {
+                                    self.reveal_cell(pos - 1);
+                                }
+
+                                // right
+                                if has_right {
+                                    self.reveal_cell(pos + 1);
+                                }
                             }
-
-                            // up right
-                            if has_right {
-                                self.reveal_cell(up_pos + 1);
-                            }
-                        }
-
-                        // down
-                        if pos / self.config.columns < self.config.rows - 1 {
-                            let down_pos = pos + self.config.columns;
-                            self.reveal_cell(down_pos);
-
-                            // down left
-                            if has_left {
-                                self.reveal_cell(down_pos - 1);
-                            }
-
-                            // down right
-                            if has_right {
-                                self.reveal_cell(down_pos + 1);
-                            }
-                        }
-
-                        // left
-                        if has_left {
-                            self.reveal_cell(pos - 1);
-                        }
-
-                        // right
-                        if has_right {
-                            self.reveal_cell(pos + 1);
                         }
                     }
                 }
             }
-
-            }
-          }
         }
 
         false

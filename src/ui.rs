@@ -185,8 +185,8 @@ fn cell_to_string(mines: u32) -> String {
     } else if mines == 10 {
         String::from("🔲")
     } else {
-      let codepoint = 0x245f + mines as u16;
-      String::from_utf16(&[codepoint, 0x20]).unwrap()
+        let codepoint = 0x245f + mines as u16;
+        String::from_utf16(&[codepoint, 0x20]).unwrap()
     }
 }
 
